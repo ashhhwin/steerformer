@@ -2,13 +2,22 @@
 
 This repository contains the code and experimental results for predicting a vehicle’s steering angle from front-facing camera images using deep learning models. The project compares traditional Convolutional Neural Networks (CNNs) with modern Transformer-based architectures like the Vision Transformer (ViT) and Swin Transformer.
 
-The models are trained and evaluated on driving video data captured from real-world driving scenarios. The goal is to assess the models' performance in both in-domain and cross-domain prediction of steering angles, based solely on visual input.
+The models are trained and evaluated on real-world driving video data. The objective is to evaluate how well each architecture performs on both in-domain and cross-domain steering angle prediction tasks using only visual input.
 
 ---
 
 ## Objective
 
-To build a computer vision-based regression model that predicts the steering angle of a vehicle in real-time using only monocular dashboard camera footage. This contributes to research in autonomous driving by investigating the capability of ViT-based models in steering control tasks.
+To build a computer vision-based regression model that predicts the steering angle of a vehicle in real-time using monocular dashboard camera footage. This work contributes to research in autonomous driving by exploring the feasibility of ViT-based models in steering control without requiring multimodal inputs.
+
+---
+
+## Team Members
+
+- Ashwin Ram Venkatraman  
+- Anuja Tipare  
+- Kanav Goyal  
+- Swetha Subramanian
 
 ---
 
@@ -18,32 +27,41 @@ The dataset used for this project is publicly available at:
 
 > [https://github.com/SullyChen/driving-datasets](https://github.com/SullyChen/driving-datasets)
 
-### Description
+### Dataset Description
 
-- Dashcam videos captured from a front-facing camera during real driving sessions.
-- Each video frame is paired with a continuous steering angle value in degrees.
-- Videos were recorded under varying lighting and road conditions to simulate realistic driving environments.
+Two real-world driving datasets were used:
 
-### Preprocessing
+- **Dataset A**: ~45,000 RGB frames (completely unseen during training)
+- **Dataset B**: ~19,000 RGB frames with synchronized steering-angle labels
 
-- Frames extracted from video at 20 FPS.
-- Resized to 224×224 pixels.
-- Pixel values normalized to [-1, 1].
-- Converted into PyTorch tensors.
+Each frame has a resolution of **640×480 pixels**, captured at **20 Hz**. Steering angles are recorded from the vehicle’s CAN bus system.
 
-### Data Split Strategy
+### Data Splits and Observations
 
-- Training and validation conducted on one subset of driving videos.
-- A different subset with distinct road/camera settings is reserved for cross-domain generalization testing.
+- **Training Set**: 80% of Dataset B
+- **Validation Set**: 20% of Dataset B
+- **Cross-Domain Test Set**: Dataset A
+- **Label Imbalance**: 73% of frames have |θ| < 1°, reflecting straight-driving dominance. High-angle turns are rare.
+- **Domain Shift**: Visual mismatch between Dataset A and B in lighting, road geometry, and camera type.
+- **Missing Modalities**: No speed, IMU, or GPS data available; model relies entirely on RGB images.
+
+---
+
+## Preprocessing
+
+- Video frames extracted at 20 FPS
+- Resized to 224×224 pixels
+- Pixel values normalized to [-1, 1]
+- Converted to PyTorch tensors
 
 ---
 
 ## Assumptions
 
-- Vehicle speed and IMU data are unavailable and assumed constant.
-- No temporal context is used (single-frame prediction).
-- Camera orientation is front-facing and fixed across samples.
-- No latency between captured frame and steering label.
+- Vehicle speed is constant or slowly varying across the dataset
+- No significant delay between frame capture and steering label
+- The camera is fixed in a front-facing orientation
+- No temporal context is used (each frame is treated independently)
 
 ---
 
@@ -51,31 +69,31 @@ The dataset used for this project is publicly available at:
 
 ### 1. Convolutional Neural Network (CNN)
 
-A simple architecture consisting of stacked convolutional layers followed by a fully connected regressor.
+A simple convolutional architecture comprising multiple Conv2D layers followed by ReLU activations and a fully connected regression head.
 
-- Loss Function: Mean Squared Error (MSE)
-- Optimizer: Adam
+- Loss Function: Mean Squared Error (MSE)  
+- Optimizer: Adam  
 
 ### 2. Vision Transformer (ViT)
 
-Pretrained ViT-B/16 model (trained on ImageNet-21k) used with a custom regression head.
+Pretrained ViT-B/16 (ImageNet-21k) model with a custom regression head. The transformer encoder is frozen and only the head is trained.
 
-- Only the regression head is trained; the transformer encoder is frozen.
-- Each image is divided into 16×16 patches and embedded as tokens.
+- Each image is split into 16×16 patches and embedded as token sequences
+- Uses self-attention to model long-range spatial dependencies
 - Reference: [Dosovitskiy et al., 2020](https://arxiv.org/abs/2010.11929)
 
 ### 3. Swin Transformer
 
-A hierarchical vision transformer using local window-based self-attention. Also pretrained on ImageNet-1k.
+A hierarchical vision transformer trained on ImageNet-1k. Introduces local-window attention and shifted windows to reduce complexity and build multi-scale features.
 
-- Encoder frozen; only regression head fine-tuned.
+- Encoder is frozen; regression head is trained
 - Reference: [Liu et al., 2021](https://arxiv.org/abs/2103.14030)
 
 ---
 
 ## Results
 
-### In-Domain Evaluation (Trained and Tested on Same Subset)
+### In-Domain Evaluation (Train & Test on Dataset B)
 
 | Model     | MAE (°) | RMSE (°) |
 |-----------|---------|----------|
@@ -83,7 +101,7 @@ A hierarchical vision transformer using local window-based self-attention. Also 
 | ViT       | 14.70   | 30.02    |
 | Swin ViT  | 11.08   | 26.15    |
 
-### Cross-Domain Evaluation (Generalization Test)
+### Cross-Domain Evaluation (Train on B, Test on A)
 
 | Model     | MAE (°) | RMSE (°) |
 |-----------|---------|----------|
@@ -95,27 +113,37 @@ A hierarchical vision transformer using local window-based self-attention. Also 
 
 ## Interpretability Tools
 
-- **Grad-CAM**: Applied to CNN to visualize the spatial attention of convolutional filters.
-- **Attention Maps**: Extracted from ViT and Swin Transformer to observe token-level importance.
+- **Grad-CAM**: Applied to CNN to understand spatial focus during prediction.
+- **Attention Maps**: Extracted from ViT and Swin to visualize patch-level importance during inference.
 
 ---
 
 ## Key Observations
 
-- CNNs outperform ViTs on small datasets but tend to overfit.
-- Swin Transformer showed better cross-domain robustness than ViT.
-- Label imbalance (dominated by straight-driving) and lack of speed context limit model performance.
-- Vision-only models face limitations in generalization without temporal or multimodal inputs.
+- CNNs outperformed transformer models on smaller, in-domain datasets but overfit easily.
+- Swin Transformer showed more consistent cross-domain generalization compared to ViT.
+- Both transformers struggled due to dataset size and imbalance.
+- All models are limited by the lack of multimodal context (e.g., speed, IMU).
 
 ---
 
 ## Future Work
 
-- Use time-series input (3D CNN or Transformer with temporal embeddings).
-- Augment data to balance left/right turn samples.
-- Incorporate additional sensors like IMU, speed, and GPS.
-- Add auxiliary tasks like lane segmentation to enhance spatial reasoning.
+- Incorporate temporal models (e.g., 3D CNNs, TimeSformer)
+- Augment training data for better distribution across steering angles
+- Introduce multi-sensor fusion (e.g., speed, IMU, GPS)
+- Add auxiliary tasks such as lane segmentation or depth estimation to strengthen spatial reasoning
 
 ---
 
-  
+## References
+
+- Sully Chen. “driving-datasets.” GitHub: https://github.com/SullyChen/driving-datasets  
+- Dosovitskiy et al., *An Image is Worth 16x16 Words*, arXiv:2010.11929  
+- Liu et al., *Swin Transformer: Hierarchical Vision Transformer using Shifted Windows*, arXiv:2103.14030
+
+---
+
+## License
+
+This repository is for academic and research purposes only. For reuse or collaboration, please contact the authors.
