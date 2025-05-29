@@ -84,10 +84,15 @@ Pretrained ViT-B/16 (ImageNet-21k) model with a custom regression head. The tran
 
 ### 3. Swin Transformer
 
-A hierarchical vision transformer trained on ImageNet-1k. Introduces local-window attention and shifted windows to reduce complexity and build multi-scale features.
+The Swin Transformer is a hierarchical vision transformer architecture developed by Microsoft, designed to be more efficient and scalable for vision tasks than standard ViTs.
 
-- Encoder is frozen; regression head is trained
-- Reference: [Liu et al., 2021](https://arxiv.org/abs/2103.14030)
+Unlike ViTs that perform full global attention (which is computationally expensive), Swin uses a **local window-based self-attention mechanism** and introduces **shifted windows** in alternating layers to allow for **cross-window interactions**. This builds both **local and global representations** while maintaining computational efficiency.
+
+- The **entire Swin Transformer model was fully fine-tuned** during training (encoder and regression head).
+- It was pretrained on ImageNet-1k and adapted to the steering angle regression task.
+- Hierarchical feature extraction allows it to resemble CNNs in multi-scale understanding while leveraging attention-based modeling.
+
+**Reference**: [Liu et al., 2021](https://arxiv.org/abs/2103.14030)
 
 ---
 
