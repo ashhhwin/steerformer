@@ -1,124 +1,81 @@
 # Steering Angle Prediction using Vision Transformers
 
-This repository contains the implementation and evaluation of deep learning models for predicting the steering angle of a vehicle using only front-facing camera images. The goal is to explore the use of computer vision architectures—including Convolutional Neural Networks (CNNs), Vision Transformers (ViT), and Swin Transformers—for real-time, vision-only autonomous driving tasks.
+This repository contains the code and experimental results for predicting a vehicle’s steering angle from front-facing camera images using deep learning models. The project compares traditional Convolutional Neural Networks (CNNs) with modern Transformer-based architectures like the Vision Transformer (ViT) and Swin Transformer.
 
-The project assesses how effectively these models can generalize across different domains and lighting conditions, and evaluates their ability to interpret key road features such as lane markings and road curvature from RGB image sequences.
-
----
-
-## Project Overview
-
-Autonomous driving systems require accurate perception of the road to generate safe control decisions. In this project, we investigate the problem of steering angle prediction from monocular RGB images using supervised regression.
-
-We train and evaluate three model architectures:
-
-1. A custom-built Convolutional Neural Network (CNN)
-2. A pretrained Vision Transformer (ViT)
-3. A pretrained Swin Transformer
-
-Each model is trained on a labeled dataset of driving sequences containing synchronized RGB frames and corresponding steering angles, and is evaluated both in-domain and cross-domain.
+The models are trained and evaluated on driving video data captured from real-world driving scenarios. The goal is to assess the models' performance in both in-domain and cross-domain prediction of steering angles, based solely on visual input.
 
 ---
 
-## Team Members
+## Objective
 
-- Ashwin Ram Venkatraman  
-- Anuja Tipare  
-- Kanav Goyal  
-- Swetha Subramanian
+To build a computer vision-based regression model that predicts the steering angle of a vehicle in real-time using only monocular dashboard camera footage. This contributes to research in autonomous driving by investigating the capability of ViT-based models in steering control tasks.
 
 ---
 
-## Problem Statement
+## Dataset
 
-The aim of this project is to predict the instantaneous steering angle of a vehicle solely from front-facing RGB camera images. The model should be able to infer turning direction and magnitude by analyzing road features such as lane lines, road edges, and curvature, without relying on other sensory inputs like speed, GPS, or IMU data.
+The dataset used for this project is publicly available at:
 
----
+> [https://github.com/SullyChen/driving-datasets](https://github.com/SullyChen/driving-datasets)
 
-## Dataset Description
+### Description
 
-Two real-world driving datasets were used:
+- Dashcam videos captured from a front-facing camera during real driving sessions.
+- Each video frame is paired with a continuous steering angle value in degrees.
+- Videos were recorded under varying lighting and road conditions to simulate realistic driving environments.
 
-- **Dataset A**: ~45,000 RGB frames (unseen during training)
-- **Dataset B**: ~19,000 RGB frames with steering-angle labels
+### Preprocessing
 
-Each image has a resolution of 640×480 pixels and a sampling rate of 20 Hz. The steering angle labels are extracted from the vehicle’s CAN bus.
+- Frames extracted from video at 20 FPS.
+- Resized to 224×224 pixels.
+- Pixel values normalized to [-1, 1].
+- Converted into PyTorch tensors.
 
-### Data Splits
+### Data Split Strategy
 
-- **Training**: 80% of Dataset B
-- **Validation**: 20% of Dataset B
-- **Cross-domain Test**: Dataset A (completely unseen during training)
-
-### Observations
-
-- **Label Imbalance**: Approximately 73% of steering angles fall within ±1°, reflecting mostly straight driving. Turns (>10°) are rare and underrepresented.
-- **Domain Shift**: Datasets differ in lighting, road geometry, and camera properties, significantly affecting generalization performance.
-- **Missing Modalities**: No access to speed, IMU, or acceleration data. The system is trained to rely exclusively on visual cues.
+- Training and validation conducted on one subset of driving videos.
+- A different subset with distinct road/camera settings is reserved for cross-domain generalization testing.
 
 ---
 
 ## Assumptions
 
-- The camera is fixed in a front-facing orientation.
-- Lighting and weather conditions are assumed to be non-critical.
-- There is minimal delay between image capture and steering label.
-- Steering angle is the only control signal used for training.
-- Vehicle speed is assumed constant or slowly varying across the dataset.
+- Vehicle speed and IMU data are unavailable and assumed constant.
+- No temporal context is used (single-frame prediction).
+- Camera orientation is front-facing and fixed across samples.
+- No latency between captured frame and steering label.
 
 ---
 
-## Data Preprocessing
-
-The following transformations were applied to each image:
-
-- Resize to 224×224 pixels
-- Normalize pixel values to [-1, 1]
-- Convert to PyTorch tensor format
-
-No data augmentation or noise injection was applied for this baseline comparison.
-
----
-
-## Model Architectures
+## Models
 
 ### 1. Convolutional Neural Network (CNN)
 
-A simple CNN was trained from scratch, composed of four convolutional blocks with increasing channel depth, followed by flattening and a fully connected regression head.
+A simple architecture consisting of stacked convolutional layers followed by a fully connected regressor.
 
-- Activation: ReLU  
-- Loss: Mean Squared Error (MSE)  
+- Loss Function: Mean Squared Error (MSE)
 - Optimizer: Adam
 
 ### 2. Vision Transformer (ViT)
 
-The ViT model is a pretrained transformer encoder originally trained on ImageNet-21k. For our task:
+Pretrained ViT-B/16 model (trained on ImageNet-21k) used with a custom regression head.
 
-- Only the regression head is trained; the backbone remains frozen.
-- Each image is split into 16×16 patches, which are linearly embedded and positionally encoded.
-- Paper reference: [An Image is Worth 16x16 Words (Dosovitskiy et al., 2020)](https://arxiv.org/abs/2010.11929)
+- Only the regression head is trained; the transformer encoder is frozen.
+- Each image is divided into 16×16 patches and embedded as tokens.
+- Reference: [Dosovitskiy et al., 2020](https://arxiv.org/abs/2010.11929)
 
 ### 3. Swin Transformer
 
-Swin Transformer introduces hierarchical feature maps and local self-attention using shifted windows. It is also pretrained on ImageNet-1k.
+A hierarchical vision transformer using local window-based self-attention. Also pretrained on ImageNet-1k.
 
-- The backbone is frozen; only the regressor is trained.
-- Paper reference: [Swin Transformer (Liu et al., 2021)](https://arxiv.org/abs/2103.14030)
-
----
-
-## Evaluation Metrics
-
-- **Mean Absolute Error (MAE)** in degrees
-- **Root Mean Square Error (RMSE)** in degrees
-
-Performance is reported both for in-domain (B → B) and cross-domain (B → A) settings.
+- Encoder frozen; only regression head fine-tuned.
+- Reference: [Liu et al., 2021](https://arxiv.org/abs/2103.14030)
 
 ---
 
 ## Results
 
-### In-Domain: Trained and Tested on Dataset B
+### In-Domain Evaluation (Trained and Tested on Same Subset)
 
 | Model     | MAE (°) | RMSE (°) |
 |-----------|---------|----------|
@@ -126,7 +83,7 @@ Performance is reported both for in-domain (B → B) and cross-domain (B → A) 
 | ViT       | 14.70   | 30.02    |
 | Swin ViT  | 11.08   | 26.15    |
 
-### Cross-Domain: Trained on B, Tested on A
+### Cross-Domain Evaluation (Generalization Test)
 
 | Model     | MAE (°) | RMSE (°) |
 |-----------|---------|----------|
@@ -136,45 +93,29 @@ Performance is reported both for in-domain (B → B) and cross-domain (B → A) 
 
 ---
 
-## Visualization & Interpretability
+## Interpretability Tools
 
-- **Inference Outputs**: Visual comparison of predicted vs. true steering angles
-- **Grad-CAM**: Applied to CNN for visualizing feature importance
-- **Attention Maps**: Extracted from ViT and Swin Transformer to examine global context usage
-
----
-
-## Key Insights
-
-- The CNN performed best on in-domain data, though it showed signs of overfitting.
-- Transformer models underperformed due to limited training data and sensitivity to domain shift.
-- Swin Transformer was relatively more robust to cross-domain testing than ViT.
+- **Grad-CAM**: Applied to CNN to visualize the spatial attention of convolutional filters.
+- **Attention Maps**: Extracted from ViT and Swin Transformer to observe token-level importance.
 
 ---
 
-## Limitations
+## Key Observations
 
-- Dataset is imbalanced and lacks sharp-turn examples.
-- Pretrained models were not fine-tuned end-to-end due to computational constraints.
-- No use of multimodal sensor data, which would be essential in real-world driving.
+- CNNs outperform ViTs on small datasets but tend to overfit.
+- Swin Transformer showed better cross-domain robustness than ViT.
+- Label imbalance (dominated by straight-driving) and lack of speed context limit model performance.
+- Vision-only models face limitations in generalization without temporal or multimodal inputs.
 
 ---
 
 ## Future Work
 
-- Collect more diverse data including extreme steering angles and adverse conditions.
-- Incorporate lane segmentation or depth estimation as auxiliary tasks.
-- Explore data augmentation techniques and domain adaptation strategies.
-- Fine-tune transformer backbones with regularization and scheduling.
+- Use time-series input (3D CNN or Transformer with temporal embeddings).
+- Augment data to balance left/right turn samples.
+- Incorporate additional sensors like IMU, speed, and GPS.
+- Add auxiliary tasks like lane segmentation to enhance spatial reasoning.
 
 ---
 
-## Citation
-
-If you use this work in your research or projects, please cite our project report or acknowledge the authors.
-
----
-
-## License
-
-This project is intended for academic and educational purposes only. For reuse or collaboration, please contact the contributors.
+  
